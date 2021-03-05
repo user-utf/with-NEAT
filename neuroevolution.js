@@ -1,7 +1,10 @@
+var activ1 = '';
 var Henrievolution = function (options) {
     //potentialy inform weather we have it
-    world: create(options.AF,options.population, options.layers,true);
+    world: create(options.AF,options.population, options.layers,options.NEAT);
     const layers = options.layers;
+    const neatOn = options.NEAT
+    activ1 = options.AF
     self.setScore = (e,score) =>{
         world[e].value = score
     }
@@ -12,7 +15,7 @@ var Henrievolution = function (options) {
     }
 
     self.mutate = (Perce,topx) =>{
-        world = Mutation(Perce,topx,world)
+        world = Mutation(Perce,topx,world,neatOn)
     }
     return self
 
@@ -21,21 +24,108 @@ var Henrievolution = function (options) {
 // var x = new Henrievolution({AF:'sigmoid',Pop:10,Layers:[3,4,5]})
 
 
-Mutation = (Perce,topx,world) =>{
-    var catigories = splitInputs(world,topx);
-    var topInputs = catigories[0];
+Mutation = (Perce,topx,world,neatOn) =>{
+
+    if (neatOn){
+        world = NEAT(world,Perce,topx)
+    }else{
+        var catigories = splitInputs(world,topx);
+        var topInputs = catigories[0]
+        topInputs = setMutation(topInputs,Perce)
+        topInputs = topInputs.concat(catigories[1])
+        world = topInputs
+    }
+
+    //put them back with the mere mortals
+    return world
+}
+addNeuronMutation = (topInputs) =>{
+    if (Math.random() < 0.2){
+        for (var i = 2; i < topInputs.length;i++){
+            if (topInputs[i].NN.length == 2){
+                topInputs[i].NN.splice(1, 0, [{value:0,biase:0,inovationNumber:nInovationNumber(1,0,topInputs[i].topIno.neuron),activation:activ1,weights:[]}]);
+                topInputs = fix(1,topInputs,i)
+            }else{
+                if (Math.random() > 0.2){
+                    let layer = Math.floor(Math.random() * (topInputs[i].NN.length-1))+1
+                    //this if is torprevent new output neurons, something might be wrong with my implementation of math.random
+                    if (layer < topInputs[i].NN.length-1 && layer != 0){
+                        topInputs[i].NN[layer].push({value:0,biase:0,inovationNumber:nInovationNumber(layer,topInputs[i].NN[layer].length,topInputs[i].topIno.neuron),activation:activ1,weights:[]});
+                    }
+                    }else{
+
+                    let layer = Math.floor(Math.random() * (topInputs[i].NN.length-1))+1
+                    topInputs[i].NN.splice(layer, 0, [{value:0,biase:0,inovationNumber:nInovationNumber(layer,topInputs[i].NN[layer].length,topInputs[i].topIno.neuron),activation:activ1,weights:[]}]);
+                    topInputs = fix(layer,topInputs,i)
+                }
+            }
+        }
+    }
+    return topInputs
+}
+fix = (layer,topInputs,i) =>{
+        for (var b = 1; b < topInputs[i].NN.length;b++){
+            for (var c = 0; c < topInputs[i].NN[b].length;c++){
+                for (var d = 0; d < topInputs[i].NN[b][c].weights.length;d++){
+                    if (topInputs[i].NN[b][c].weights[d].layer >= layer){
+                        topInputs[i].NN[b][c].weights[d].layer += 1
+                        // console.log(topInputs[i].NN[b][c].weights[d].layer,i)
+                    }
+            }
+            }
+        }
+    return topInputs
+}
+addConnectionMutation = (topInputs,Perce) =>{
     for (var i = 2; i < topInputs.length;i++){
         for (var b = 1; b < topInputs[i].NN.length;b++){
-            // var rand = Math.floor(Math.random() * 100);
-            // if (rand <= Perce){
-            //     topInputs[i] = addConnectionMutation(topInputs[i])
-            // }
+            var rand = Math.floor(Math.random() * 100);
+            if (rand <= Perce){
+                const Lspot = Math.floor(Math.random() * (topInputs[i].NN.length))
+                const Nspot = Math.floor(Math.random() * topInputs[i].NN[Lspot].length)
+                const z = Math.floor(Math.random() *(topInputs[i].NN[b].length))
+                const spot = topInputs[i].NN[b]
+                //checking for repeats
+                var ans = false
+                spot[z].weights.forEach(weight =>{if (weight.layer == Lspot && weight.neuron == Nspot){ans = true}})
+                if (ans == false && b != Lspot < b){
+                    spot[z].weights.push({value:0,layer:Lspot,neuron:Nspot,inovationNumber:wInovation(spot[z].inovationNumber,topInputs[i].NN[Lspot][Nspot].inovationNumber)})
+                }
+                }
+        }
+    }
+    return topInputs
+}
+changeMutation =(topInputs,Perce) =>{
+    for (var i = 2; i < topInputs.length;i++){
+        for (var b = 1; b < topInputs[i].NN.length;b++){
             for (var c = 0; c < topInputs[i].NN[b].length;c++){
-                // var rand = Math.floor(Math.random() * 100);
-                // if (rand <= Perce){
-                //     addNodeMutation(topInputs[i].NN,b)
-                // }
-
+                var rand = Math.floor(Math.random() * 100);
+                if (rand <= Perce){
+                    topInputs[i].NN[b][c].biase += Math.random() * 1.2 -0.2
+                }
+            }
+            for (var c = 0; c < topInputs[i].NN[b].length;c++){
+                var rand = Math.floor(Math.random() * 100);
+                if (rand <= Perce){
+                    //mutate
+                    for (var d = 0; d < topInputs[i].NN[b][c].weights.length;d++){
+                        var rand = Math.floor(Math.random() * 100);
+                        if (rand <= Perce){
+                            topInputs[i].NN[b][c].weights[d].value += Math.random() * 1.2 -0.2
+                        }
+                    }
+                        }
+                    }
+                    
+                }
+        }
+    return topInputs  
+}
+setMutation =(topInputs,Perce) =>{
+    for (var i = 2; i < topInputs.length;i++){
+        for (var b = 1; b < topInputs[i].NN.length;b++){
+            for (var c = 0; c < topInputs[i].NN[b].length;c++){
                 var rand = Math.floor(Math.random() * 100);
                 if (rand <= Perce){
                     topInputs[i].NN[b][c].biase = Math.random() * 2 -1
@@ -45,24 +135,218 @@ Mutation = (Perce,topx,world) =>{
                 var rand = Math.floor(Math.random() * 100);
                 if (rand <= Perce){
                     //mutate
-                    // console.log(topInputs[i].NN[b][c])
                     for (var d = 0; d < topInputs[i].NN[b][c].weights.length;d++){
                         var rand = Math.floor(Math.random() * 100);
                         if (rand <= Perce){
                             topInputs[i].NN[b][c].weights[d].value = Math.random() * 2 -1
                         }
-                            }
+                    }
                         }
                     }
                     
                 }
         }
-    topInputs = topInputs.concat(catigories[1])
-    world = topInputs
-    return world
+    return topInputs
 }
- 
-  unmatrixfy = (array) =>{
+var wMoves = []
+wInovation =(currentIn,newIn)=>{
+    if (wMoves.length == 0){
+        wMoves.push([currentIn,newIn,wMoves.length])
+        return wMoves.length-1
+    }else{
+        wMoves2 = wMoves
+        var buffer = true
+        for (var i = 0; i < wMoves2.length;i++){
+            if (currentIn == wMoves2[i][0] && newIn == wMoves2[i][1]){
+                return wMoves2[i][2]
+            }else{
+                buffer = false
+            }
+        }
+        //could be a cause of error, further investigation is needed
+        if (buffer == false){
+            wMoves.push([currentIn,newIn,wMoves.length])
+        }
+        wMoves = wMoves2
+        return wMoves.length-1
+    }
+}
+var nSpots = []
+nInovationNumber = (layer,neuron,top) =>{
+    if (nSpots.length == 0){
+        nSpots.push([layer,neuron,nSpots.length + top])
+        return nSpots.length-1 + top
+    }else{
+        nSpots2 = nSpots
+        var buffer = true
+        for (var i = 0; i < nSpots2.length;i++){
+            if (layer == nSpots2[i][0] && neuron == nSpots2[i][1]){
+                return nSpots2[i][2]
+            }else{
+                buffer = false
+            }
+        }
+        //could be a cause of error, further investigation is needed
+        if (buffer == false){
+            nSpots2.push([layer,neuron,nSpots.length + top])
+        }
+        nSpots = nSpots2
+        return nSpots2.length-1 + top
+    }    
+}
+NEAT =(world,Perce,topx)=>{
+    // var species = speciate(world,5)
+    var species = [world]
+    var ans = []
+    for (var i = 0; i < species.length;i++){
+        element = species[i]
+        // element = crossover(element,2)
+        //2 as in kill 1/2
+        var catigories = splitInputs(element,(topx/world.length)*element.length);
+        var topInputs = catigories[0];
+        //different mutations
+        var rand = Math.floor(Math.random() * 5);
+        switch (rand){
+            case 0:
+                //0 == set weights to random numbers from -1,1
+                topInputs = setMutation(topInputs,Perce)
+                break;
+            case 1:
+                //1 == change weights by micro amounts, make sure it's > -1 < 1
+                topInputs = changeMutation(topInputs,Perce)
+                break;
+            case 2:
+                // //2 == add conection and give/check for inovation number
+                topInputs = addConnectionMutation(topInputs,Perce)
+                break;
+            case 3:
+                // 3 add neuron mutation give it mutation number and chop the connection in two, give one a weight of 1
+                topInputs = addNeuronMutation(topInputs,Perce)
+                // topInputs = setMutation(topInputs,Perce)
+                break;
+            case 4:
+                // 4 diable specific genes and try to find the one's that make it worse/unesesarely slower
+                topInputs = changeMutation(topInputs,Perce)
+                break
+        }
+
+        topInputs = topInputs.concat(catigories[1])
+        if (ans.length == 0){
+            ans = topInputs
+        }else{
+            ans = ans.concat(topInputs)
+        }
+
+    }
+    // if (species.length < 200){
+    //     console.log(element)
+    // }
+    return ans
+}
+
+crossover = (element,n) =>{
+    element = sortInputsByVal(element);
+    const deltedL = Math.floor(element.length/n)
+    for (var i = deltedL; i < element.length;i++){
+        if (i == deltedL){
+            element[i] = mix(element[0],element[1])
+        }else{
+            element[i] = mix(element[i-deltedL-1],element[i-deltedL])
+        }
+    }
+    return element
+}
+mix = (net1,net2) =>{
+    var first = net2
+    var second = net1
+    if (net1.value > net2.value){
+        first = net1
+        second = net2
+    }
+    let third = {NN:[],value:0,topIno:0}
+    for (var i = 0; i < first.NN.length;i++){
+        third.NN.push([])
+        first.NN[i].forEach(element =>{
+            var options = find(element.inovationNumber,second.NN[i])
+            if (options[0]){
+                if (Math.random > 0.5){
+                    third.NN[i].push(element)
+                }else{
+                    third.NN[i].push(options[1])
+                }
+            }else{
+                third.NN[i].push(element)
+            }
+        })
+    }
+    // console.log(third)
+    return third
+    //{value:0,biase:0,inovationNumber:neuronInovationNumber,activation:activ,weights:[]}
+}
+find = (num,array) =>{
+    array.forEach(element =>{
+        if (element.inovationNumber == num){
+            return [true,element]
+        }
+    })
+    return false
+}
+speciate = (world,different) =>{
+    var neurons = []
+    var weights = []
+    world.forEach(element =>{
+        neurons.push([])
+        weights.push([])
+        element.NN.forEach(layers =>{
+            layers.forEach(neuron =>{
+                neurons[neurons.length-1].push(neuron.inovationNumber)
+                neurons.forEach(weights1 =>{
+                    weights[weights.length-1].push(weights1.inovationNumber)
+                })
+            })
+        })
+    })
+    var species = []
+    var temporaryTags = []
+    for (var i =0; i < world.length;i++){
+        if (i == 0){
+            species.push([])
+            species[species.length-1].push(world[0])
+            temporaryTags.push([neurons[i],weights[i]])
+        }else{
+            var pass = false
+            for (var b =0; b < temporaryTags.length;b++){
+                if (removeCommon(neurons[i],temporaryTags[b][0]) + (removeCommon(weights[i],temporaryTags[b][1])/2) + Math.floor(world[i].NN.length/2) <= different){
+                    species[b].push(world[i])
+                    pass = true
+                    b = temporaryTags.length
+                }
+            }
+            if (pass == false){
+                species.push([])
+                species[species.length-1].push(world[i])
+                temporaryTags.push([neurons[i],weights[i]]) 
+            }
+        }
+    }
+    return species
+}
+removeCommon = (first, second) => {
+    ans = []
+    first.forEach(num1 =>{
+        var pass = false
+        second.forEach(num2 =>{
+            if (num1 === num2){
+                pass = true
+            }
+        })
+        if (pass == false){
+            ans.push(num1)
+        }
+    })
+    return ans.length
+ };
+unmatrixfy = (array) =>{
     var answer = [];
     for (var i = 0; i < array.length; i++){
         for (var b = 0; b < array[i].length; b++){
@@ -94,11 +378,10 @@ makeNN = (n,l,activ,layers,k) =>{
     for (var node = 0; node < layers[l];node++){
         set1.push({value:0,biase:0,inovationNumber:neuronInovationNumber,activation:activ,weights:[]})
         neuronInovationNumber += 1
-        if (k){
+        if (!k){
         // set1 = [{value:0,biase:0,inovationNumber:neuronInovationNumber,activation:activ,weights:[]}]
         for (var node0 = 0; node0 < layers[l-1];node0++){
             // set1[node].weights.push([])
-            // console.log(set1,node0)
             set1 = makeGiven(set1,node,node0,l,-1)
         }
     }
@@ -111,7 +394,6 @@ makeNN = (n,l,activ,layers,k) =>{
     }
     world[n].topIno = {weight:inovationNumber,neuron:neuronInovationNumber}
     world[n].NN.splice(l,0,set1)
-    // console.log(world);
     return world
 }
 runNN = (inputs,n,world,layers) =>{
@@ -128,9 +410,15 @@ activate = (n,layer,neurons) =>{
     var add = 0
     for (var b = 0; b < world[n].NN[layer][neurons].weights.length;b++){
         const wei = world[n].NN[layer][neurons].weights[b]
-        add += (world[n].NN[wei.layer][wei.neuron].value * wei.value)
+        try{
+            add += (world[n].NN[wei.layer][wei.neuron].value * wei.value)
+        }catch{
+            console.log(world[n].NN[wei.layer],wei.neuron,wei.layer,n)
+            // add += (world[n].NN[wei.layer][0].value * wei.value)
+            // throw "YEET"
+            world[n].NN[layer][neurons].weights.splice(b,1)
+        }
     }
-    // console.log(world[i].NN[i2].neurons[i3])
     add +=  world[n].NN[layer][neurons].biase
     let afterActive;
     switch(world[n].NN[layer][neurons].activation) {
@@ -150,13 +438,10 @@ activate = (n,layer,neurons) =>{
             afterActive = Tanh(add);
     }
     world[n].NN[layer][neurons].value = afterActive
-    // console.log(world[i].NN[i2].neurons[i3],add)
 }
 fill = (n,layers) =>{
     for (var n2 = 1; n2 < world[n].NN.length; n2++){
-        // console.log(world[n].NN[n2])
         for (var n3 = 0; n3 < world[n].NN[n2].length; n3++){
-            // console.log(world[n].NN[n2])
             activate(n,n2,n3);
             if (n2 == world[n].NN.length-1 && n3 == world[n].NN[n2].length-1){
                 let ans = []
