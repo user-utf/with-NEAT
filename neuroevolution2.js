@@ -1,4 +1,4 @@
-var Henrievolution = function (options) {
+var Hevolution = function (options) {
     //potentialy inform weather we have it
     world: create(options.AF,options.population, options.layers,true);
     const layers = options.layers;
