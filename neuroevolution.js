@@ -1,5 +1,5 @@
 var activ1 = '';
-var Henrievolution = function (options) {
+var Hevolution = function (options) {
     //potentialy inform weather we have it
     world: create(options.AF,options.population, options.layers,options.NEAT);
     const layers = options.layers;
